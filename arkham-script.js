@@ -1,18 +1,57 @@
+let tradeCount = 0;
+let entryPrice = null;
+let stopTrading = false;
+
 const MIN_PRICE = 123;
 
+
 /////////////////////////
+
 
 const MIN_WAIT_MS = 300;
 const MAX_WAIT_MS = 1000;;
 const MIN_SWITCH_MS = 500;
 const MAX_SWITCH_MS = 3000;
 
+const BUY_LIMIT_TIME = 360;
+
+/////////////////////////
+
+
+const LIMIT_ORDER_TYPE = "LIMIT";
+const MARKET_ORDER_TYPE = "MARKET";
+
 const BUY_TYPE = "BUY";
 const SELL_TYPE = "SELL";
 
-let tradeCount = 0;
-let buyPrice = null;
-let stopTrading = false;
+
+/////////////////////////
+
+
+const MAIN_WRAPPER_CLASS_ID = 'ae282d4';
+
+
+const ORDER_TYPE_WRAPPER_CLASS_NAME = "a77eb31";
+
+const BUY_SECTION_ELEMENT_ID = "tab-buy";
+const SELL_SECTION_ELEMENT_ID = "tab-sell";
+
+const BOOK_BUY_ELEMENT_CLASS = "a7b9536";
+const BOOK_SELL_ELEMENT_CLASS = "a1b6b92";
+
+const SIZE_WRAPPER_CLASS_NAME = "a4baac8";
+
+const BUY_BUTTON_ELEMENT_CLASS_NAME = "ad3fb6d";
+const SELL_BUTTON_ELEMENT_CLASS_NAME = "aefd9a5";
+
+const NO_ORDERS_ELEMENT_CLASS_NAME = "grid text-xs overflow-auto adb5aed";
+const DEFAULT_CHILDREN_CLASS_NAMES = ['aa6ba26', 'af5ae96'];
+
+const CANCEL_BUTTON_WRAPPER_CLASS_NAME = 'abf4b53';
+
+
+/////////////////////////
+
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -28,10 +67,6 @@ const getValueByType = (type, buyValue, sellValue) => {
   }
 }
 
-
-/////////////////////////
-
-const MAIN_WRAPPER_CLASS_ID = 'ae282d4';
 
 /////////////////////////
 
@@ -58,9 +93,18 @@ function playBeep() {
 
 /////////////////////////
 
+async function selectOrderType(type) {
+  const [orderTypeWrapperElement] = document.getElementsByClassName(ORDER_TYPE_WRAPPER_CLASS_NAME);
+  const orderTypeElement = Array.from(orderTypeWrapperElement.children).find((element) => element.innerText === type);
 
-const BUY_SECTION_ELEMENT_ID = "tab-buy";
-const SELL_SECTION_ELEMENT_ID = "tab-sell";
+  if (orderTypeElement) {
+    orderTypeElement.click();
+    await sleep(getRandomWait(MIN_WAIT_MS, MAX_WAIT_MS));
+  }
+}
+
+
+/////////////////////////
 
 const openSectionByTypeID = async (type) => {
   let id = getValueByType(type, BUY_SECTION_ELEMENT_ID, SELL_SECTION_ELEMENT_ID);
@@ -75,10 +119,6 @@ const openSectionByTypeID = async (type) => {
 
 
 /////////////////////////////////
-
-
-const BOOK_BUY_ELEMENT_CLASS = "a7b9536";
-const BOOK_SELL_ELEMENT_CLASS = "a1b6b92";
 
 const setOrderBookPriceByWrapperClassName = async (type) => {
   let className = getValueByType(type, BOOK_BUY_ELEMENT_CLASS, BOOK_SELL_ELEMENT_CLASS);
@@ -95,7 +135,7 @@ const setOrderBookPriceByWrapperClassName = async (type) => {
       }
 
       console.log("THE ORDER BOOK BUY PRICE", +buttonElement.innerHTML);
-      buyPrice = +buttonElement.innerHTML;
+      entryPrice = +buttonElement.innerHTML;
       buttonElement.click();
     }
 
@@ -104,14 +144,14 @@ const setOrderBookPriceByWrapperClassName = async (type) => {
         await new Promise(() => console.log("ALERT: PRICE IS TOO LOW"));
       }
 
-      if (buyPrice > +buttonElement.innerHTML) {
+      if (entryPrice > +buttonElement.innerHTML) {
         await waitUntilSellPriceIncrease(buttonElement);
       } else {
         console.log("THE ORDER BOOK SELL PRICE", +buttonElement.innerHTML);
         buttonElement.click();
       }
 
-      buyPrice = null;
+      entryPrice = null;
     }
   }
 }
@@ -123,7 +163,7 @@ const waitUntilSellPriceIncrease = async (element) => {
     await sleep(1000);
     console.log("MS ----- WAIT UNTIL SELL PRICE INCREASE");
 
-    if (buyPrice <= +element.innerHTML) {
+    if (entryPrice <= +element.innerHTML) {
       console.log("THE ORDER BOOK SELL PRICE", +element.innerHTML);
       inProgress = false;
       element.click();
@@ -137,8 +177,6 @@ const waitUntilSellPriceIncrease = async (element) => {
 /////////////////////////
 
 
-const SIZE_WRAPPER_CLASS_NAME = "a4baac8";
-
 const setMaxSizeByWrapperClassName = async (className) => {
   const [wrapperElement] = document.getElementsByClassName(className);
 
@@ -151,8 +189,6 @@ const setMaxSizeByWrapperClassName = async (className) => {
 
 //////////////////////////////
 
-const BUY_BUTTON_ELEMENT_CLASS_NAME = "ad3fb6d";
-const SELL_BUTTON_ELEMENT_CLASS_NAME = "aefd9a5";
 
 const makeAnOrder = (type) => {
   let className = getValueByType(type, BUY_BUTTON_ELEMENT_CLASS_NAME, SELL_BUTTON_ELEMENT_CLASS_NAME);
@@ -169,6 +205,8 @@ const makeAnOrder = (type) => {
 
 const executeTradeByType = async (type) => {
   await openSectionByTypeID(type);
+  await selectOrderType(LIMIT_ORDER_TYPE);
+
   await setMaxSizeByWrapperClassName(SIZE_WRAPPER_CLASS_NAME);
   await setMaxSizeByWrapperClassName(SIZE_WRAPPER_CLASS_NAME);
   await setOrderBookPriceByWrapperClassName(type);
@@ -179,9 +217,6 @@ const executeTradeByType = async (type) => {
 
 /////////////////////////
 
-
-const NO_ORDERS_ELEMENT_CLASS_NAME = "grid text-xs overflow-auto adb5aed";
-const DEFAULT_CHILDREN_CLASS_NAMES = ['aa6ba26', 'af5ae96'];
 
 const checkNoOrders = () => {
   const wrapperElements = document.getElementsByClassName(NO_ORDERS_ELEMENT_CLASS_NAME);
@@ -195,15 +230,13 @@ const checkNoOrders = () => {
 /////////////////////////
 
 
-const BUY_LIMIT_TIME = 180;
-
 const waitUntilFilled = async (type) => {
   let inProgress = true;
-  let secconds = 0;
+  let seconds = 0;
 
   while (inProgress) {
     await sleep(1000);
-    ++secconds;
+    ++seconds;
 
     if (checkNoOrders()) {
       inProgress = false;
@@ -213,7 +246,7 @@ const waitUntilFilled = async (type) => {
     console.log("MS ----- WAIT UNTIL FILLED");
 
 
-    if (type === BUY_TYPE && BUY_LIMIT_TIME <= secconds) {
+    if (type === BUY_TYPE && BUY_LIMIT_TIME <= seconds) {
       this.cancelActiveOrders();
       inProgress = false;
 
@@ -225,8 +258,6 @@ const waitUntilFilled = async (type) => {
 };
 
 function cancelActiveOrders() {
-  const CANCEL_BUTTON_WRAPPER_CLASS_NAME = 'abf4b53';
-
   const [mainWrapperElement] = document.getElementsByClassName(MAIN_WRAPPER_CLASS_ID);
   const cancelButtonWrapperElements = mainWrapperElement.getElementsByClassName(CANCEL_BUTTON_WRAPPER_CLASS_NAME);
 
@@ -244,7 +275,6 @@ function cancelActiveOrders() {
 
 const performTradeCycle = async () => {
   try {
-
     await executeTradeByType(BUY_TYPE);
     await waitUntilFilled(BUY_TYPE);
     await sleep(getRandomWait(MIN_SWITCH_MS, MAX_SWITCH_MS));
@@ -271,3 +301,5 @@ const startTrading = async () => {
     await sleep(getRandomWait(30000, 50000));
   }
 };
+
+startTrading();
