@@ -1,5 +1,4 @@
-const MIN_PRICE = 2600;
-
+const MIN_PRICE = 123;
 
 /////////////////////////
 
@@ -29,6 +28,10 @@ const getValueByType = (type, buyValue, sellValue) => {
   }
 }
 
+
+/////////////////////////
+
+const MAIN_WRAPPER_CLASS_ID = 'ae282d4';
 
 /////////////////////////
 
@@ -74,8 +77,8 @@ const openSectionByTypeID = async (type) => {
 /////////////////////////////////
 
 
-const BOOK_BUY_ELEMENT_CLASS = "a95380a";
-const BOOK_SELL_ELEMENT_CLASS = "a3a433c";
+const BOOK_BUY_ELEMENT_CLASS = "a7b9536";
+const BOOK_SELL_ELEMENT_CLASS = "a1b6b92";
 
 const setOrderBookPriceByWrapperClassName = async (type) => {
   let className = getValueByType(type, BOOK_BUY_ELEMENT_CLASS, BOOK_SELL_ELEMENT_CLASS);
@@ -134,7 +137,7 @@ const waitUntilSellPriceIncrease = async (element) => {
 /////////////////////////
 
 
-const SIZE_WRAPPER_CLASS_NAME = "a99be89";
+const SIZE_WRAPPER_CLASS_NAME = "a4baac8";
 
 const setMaxSizeByWrapperClassName = async (className) => {
   const [wrapperElement] = document.getElementsByClassName(className);
@@ -148,8 +151,8 @@ const setMaxSizeByWrapperClassName = async (className) => {
 
 //////////////////////////////
 
-const BUY_BUTTON_ELEMENT_CLASS_NAME = "a0ac8d4";
-const SELL_BUTTON_ELEMENT_CLASS_NAME = "a11fd07";
+const BUY_BUTTON_ELEMENT_CLASS_NAME = "ad3fb6d";
+const SELL_BUTTON_ELEMENT_CLASS_NAME = "aefd9a5";
 
 const makeAnOrder = (type) => {
   let className = getValueByType(type, BUY_BUTTON_ELEMENT_CLASS_NAME, SELL_BUTTON_ELEMENT_CLASS_NAME);
@@ -167,6 +170,7 @@ const makeAnOrder = (type) => {
 const executeTradeByType = async (type) => {
   await openSectionByTypeID(type);
   await setMaxSizeByWrapperClassName(SIZE_WRAPPER_CLASS_NAME);
+  await setMaxSizeByWrapperClassName(SIZE_WRAPPER_CLASS_NAME);
   await setOrderBookPriceByWrapperClassName(type);
   makeAnOrder(type);
   await sleep(700);
@@ -176,8 +180,8 @@ const executeTradeByType = async (type) => {
 /////////////////////////
 
 
-const NO_ORDERS_ELEMENT_CLASS_NAME = "grid text-xs overflow-auto ac2f81c";
-const DEFAULT_CHILDREN_CLASS_NAMES = ['a834c0a', 'abed4d3'];
+const NO_ORDERS_ELEMENT_CLASS_NAME = "grid text-xs overflow-auto adb5aed";
+const DEFAULT_CHILDREN_CLASS_NAMES = ['aa6ba26', 'af5ae96'];
 
 const checkNoOrders = () => {
   const wrapperElements = document.getElementsByClassName(NO_ORDERS_ELEMENT_CLASS_NAME);
@@ -191,11 +195,15 @@ const checkNoOrders = () => {
 /////////////////////////
 
 
-const waitUntilFilled = async () => {
+const BUY_LIMIT_TIME = 180;
+
+const waitUntilFilled = async (type) => {
   let inProgress = true;
+  let secconds = 0;
 
   while (inProgress) {
     await sleep(1000);
+    ++secconds;
 
     if (checkNoOrders()) {
       inProgress = false;
@@ -203,8 +211,32 @@ const waitUntilFilled = async () => {
     }
 
     console.log("MS ----- WAIT UNTIL FILLED");
+
+
+    if (type === BUY_TYPE && BUY_LIMIT_TIME <= secconds) {
+      this.cancelActiveOrders();
+      inProgress = false;
+
+      await sleep(getRandomWait(15000, 20000));
+      await executeTradeByType(BUY_TYPE);
+      await waitUntilFilled(BUY_TYPE);
+    }
   }
 };
+
+function cancelActiveOrders() {
+  const CANCEL_BUTTON_WRAPPER_CLASS_NAME = 'abf4b53';
+
+  const [mainWrapperElement] = document.getElementsByClassName(MAIN_WRAPPER_CLASS_ID);
+  const cancelButtonWrapperElements = mainWrapperElement.getElementsByClassName(CANCEL_BUTTON_WRAPPER_CLASS_NAME);
+
+  Array.from(cancelButtonWrapperElements).map((element) => {
+    const cancelButtonElement = element.firstElementChild;
+    cancelButtonElement.click();
+  });
+
+  console.log("ACTIVE ORDERS HAVE BEEN CANCELED");
+}
 
 
 /////////////////////////
@@ -214,11 +246,11 @@ const performTradeCycle = async () => {
   try {
 
     await executeTradeByType(BUY_TYPE);
-    await waitUntilFilled();
+    await waitUntilFilled(BUY_TYPE);
     await sleep(getRandomWait(MIN_SWITCH_MS, MAX_SWITCH_MS));
 
     await executeTradeByType(SELL_TYPE);
-    await waitUntilFilled();
+    await waitUntilFilled(SELL_TYPE);
     await sleep(getRandomWait(MIN_SWITCH_MS, MAX_SWITCH_MS));
 
   } catch (error) {
